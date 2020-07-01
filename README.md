@@ -1,4 +1,4 @@
-# libasynql v3.0.0 <img src="https://poggit.pmmp.io/ci.badge/poggit/libasynql/libasynql" align="right"/>
+# libasynql v3.3.1 <img src="https://poggit.pmmp.io/ci.badge/poggit/libasynql/libasynql" align="right"/>
 Asynchronous SQL access library for PocketMine plugins.
 
 ## Usage
