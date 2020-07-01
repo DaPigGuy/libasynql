@@ -25,6 +25,7 @@ namespace poggit\libasynql\sqlite3;
 use Closure;
 use Exception;
 use InvalidArgumentException;
+use pocketmine\snooze\SleeperNotifier;
 use poggit\libasynql\base\QueryRecvQueue;
 use poggit\libasynql\base\QuerySendQueue;
 use poggit\libasynql\base\SqlSlaveThread;
@@ -53,14 +54,14 @@ class Sqlite3Thread extends SqlSlaveThread{
 	private $path;
 
 	public static function createFactory(string $path) : Closure{
-		return static function(QuerySendQueue $send, QueryRecvQueue $recv) use ($path){
-			return new Sqlite3Thread($path, $send, $recv);
+		return static function(SleeperNotifier $notifier, QuerySendQueue $send, QueryRecvQueue $recv) use ($path){
+			return new Sqlite3Thread($path, $notifier, $send, $recv);
 		};
 	}
 
-	public function __construct(string $path, QuerySendQueue $send = null, QueryRecvQueue $recv = null){
-		parent::__construct($send, $recv);
+	public function __construct(string $path, SleeperNotifier $notifier, QuerySendQueue $send = null, QueryRecvQueue $recv = null){
 		$this->path = $path;
+		parent::__construct($notifier, $send, $recv);
 	}
 
 	protected function createConn(&$sqlite) : ?string{
@@ -108,19 +109,17 @@ class Sqlite3Thread extends SqlSlaveThread{
 			case SqlThread::MODE_SELECT:
 				/** @var SqlColumnInfo[] $colInfo */
 				$colInfo = [];
-				for($i = 0, $iMax = $result->numColumns(); $i < $iMax; ++$i){
-					static $columnTypeMap = [
-						SQLITE3_INTEGER => SqlColumnInfo::TYPE_INT,
-						SQLITE3_FLOAT => SqlColumnInfo::TYPE_FLOAT,
-						SQLITE3_TEXT => SqlColumnInfo::TYPE_STRING,
-						SQLITE3_BLOB => SqlColumnInfo::TYPE_STRING,
-						SQLITE3_NULL => SqlColumnInfo::TYPE_NULL,
-					];
-					$colInfo[] = new SqlColumnInfo($result->columnName($i), $columnTypeMap[$result->columnType($i)]);
-				}
 				$rows = [];
 				while(is_array($row = $result->fetchArray(SQLITE3_ASSOC))){
 					foreach(array_values($row) as $i => &$value){
+						static $columnTypeMap = [
+							SQLITE3_INTEGER => SqlColumnInfo::TYPE_INT,
+							SQLITE3_FLOAT => SqlColumnInfo::TYPE_FLOAT,
+							SQLITE3_TEXT => SqlColumnInfo::TYPE_STRING,
+							SQLITE3_BLOB => SqlColumnInfo::TYPE_STRING,
+							SQLITE3_NULL => SqlColumnInfo::TYPE_NULL,
+						];
+						$colInfo[$i] = new SqlColumnInfo($result->columnName($i), $columnTypeMap[$result->columnType($i)]);
 						if($colInfo[$i]->getType() === SqlColumnInfo::TYPE_FLOAT){
 							if($value === "NAN"){
 								$value = NAN;

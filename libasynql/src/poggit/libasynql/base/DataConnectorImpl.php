@@ -28,7 +28,6 @@ use InvalidArgumentException;
 use Logger;
 use pocketmine\plugin\Plugin;
 use pocketmine\utils\Terminal;
-use poggit\libasynql\CallbackTask;
 use poggit\libasynql\DataConnector;
 use poggit\libasynql\generic\GenericStatementFileParser;
 use poggit\libasynql\GenericStatement;
@@ -39,9 +38,11 @@ use poggit\libasynql\result\SqlSelectResult;
 use poggit\libasynql\SqlError;
 use poggit\libasynql\SqlThread;
 use ReflectionClass;
+use TypeError;
 use function array_merge;
 use function array_pop;
 use function count;
+use function is_resource;
 use function json_encode;
 use function str_replace;
 use function usleep;
@@ -57,11 +58,12 @@ class DataConnectorImpl implements DataConnector{
 	private $logger;
 	/** @var GenericStatement[] */
 	private $queries = [];
+	/** @var callable[] */
 	private $handlers = [];
+	/** @var int */
 	private $queryId = 0;
 	/** @var string|null */
 	private $placeHolder;
-	private $task;
 
 	/**
 	 * @param Plugin      $plugin
@@ -71,12 +73,12 @@ class DataConnectorImpl implements DataConnector{
 	 */
 	public function __construct(Plugin $plugin, SqlThread $thread, ?string $placeHolder, bool $logQueries = false){
 		$this->plugin = $plugin;
+		if($thread instanceof SqlThreadPool){
+			$thread->setDataConnector($this);
+		}
 		$this->thread = $thread;
 		$this->logger = $logQueries ? $plugin->getLogger() : null;
 		$this->placeHolder = $placeHolder;
-
-		$this->task = new CallbackTask([$this, "checkResults"]);
-		$this->plugin->getScheduler()->scheduleRepeatingTask($this->task, 1);
 	}
 
 	public function setLoggingQueries(bool $loggingQueries) : void{
@@ -96,6 +98,10 @@ class DataConnectorImpl implements DataConnector{
 	}
 
 	public function loadQueryFile($fh, string $fileName = null) : void{
+		if(!is_resource($fh)){
+			throw new TypeError("Missing $fileName in resources directory of plugin.");
+		}
+
 		$parser = new GenericStatementFileParser($fileName, $fh);
 		$parser->parse();
 		foreach($parser->getResults() as $result){
@@ -275,6 +281,5 @@ class DataConnectorImpl implements DataConnector{
 
 	public function close() : void{
 		$this->thread->stopRunning();
-		$this->plugin->getScheduler()->cancelTask($this->task->getTaskId());
 	}
 }

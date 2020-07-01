@@ -1,14 +1,23 @@
 # Changelog
 
-## [3.3.0](https://github.com/poggit/libasynql/compare/v3.2.0...v3.3.0)
-4.0.0 support
-
-### Added
-- Show proper error message when passed resource sql files are not found
-- Ability to set custom logger
+## [3.3.1](https://github.com/poggit/libasynql/compare/v3.3.0...v3.3.1)
+The next patch version after 3.3.0
 
 ### Fixed
-- Compatibility with 4.0.0
+- Fixed binary string parameters in SQLite3
+
+## [3.3.0](https://github.com/poggit/libasynql/compare/v3.2.1...v3.3.0)
+The next minor version after 3.2.1
+
+### Added
+- Usage of pmmp/Snooze instead of usleep to fix high CPU usage
+- MySQL pings are now done before a query, if the connection is dead.
+
+## [3.2.1](https://github.com/poggit/libasynql/compare/v3.2.0...v3.2.1)
+The next patch version after 3.2.0
+
+### Added
+- MySQL threads ping the server every 5 minutes when sleeping
 
 ## [3.2.0](https://github.com/poggit/libasynql/compare/v3.1.1...v3.2.0)
 The next minor version after 3.1.x
@@ -44,7 +53,7 @@ Contains minor changes with some externally-usable additions. Targets PocketMine
 
 ### Updated
 - Deprecation of ServerScheduler
- 
+
 ## v3.0.0 (released 2018-04-25 15:30:00 UTC)
 This is a total rewrite, with an entirely different infrastructure. AsyncTask is no longer used.
 

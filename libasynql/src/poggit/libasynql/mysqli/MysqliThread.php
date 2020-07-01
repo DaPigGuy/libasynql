@@ -27,6 +27,7 @@ use InvalidArgumentException;
 use mysqli;
 use mysqli_result;
 use mysqli_stmt;
+use pocketmine\snooze\SleeperNotifier;
 use poggit\libasynql\base\QueryRecvQueue;
 use poggit\libasynql\base\QuerySendQueue;
 use poggit\libasynql\base\SqlSlaveThread;
@@ -56,19 +57,19 @@ class MysqliThread extends SqlSlaveThread{
 	private $credentials;
 
 	public static function createFactory(MysqlCredentials $credentials) : Closure{
-		return static function(QuerySendQueue $bufferSend, QueryRecvQueue $bufferRecv) use ($credentials){
-			return new MysqliThread($credentials, $bufferSend, $bufferRecv);
+		return static function(SleeperNotifier $notifier, QuerySendQueue $bufferSend, QueryRecvQueue $bufferRecv) use ($credentials){
+			return new MysqliThread($credentials, $notifier, $bufferSend, $bufferRecv);
 		};
 	}
 
-	public function __construct(MysqlCredentials $credentials, QuerySendQueue $bufferSend = null, QueryRecvQueue $bufferRecv = null){
-		parent::__construct($bufferSend, $bufferRecv);
+	public function __construct(MysqlCredentials $credentials, SleeperNotifier $notifier, QuerySendQueue $bufferSend = null, QueryRecvQueue $bufferRecv = null){
 		$this->credentials = serialize($credentials);
+		parent::__construct($notifier, $bufferSend, $bufferRecv);
 	}
 
 	protected function createConn(&$mysqli) : ?string{
 		/** @var MysqlCredentials $cred */
-		$cred = unserialize($this->credentials, ["allowed_classes" => [MysqlCredentials::class]]);
+		$cred = unserialize($this->credentials);
 		try{
 			$mysqli = $cred->newMysqli();
 			return null;
@@ -79,6 +80,14 @@ class MysqliThread extends SqlSlaveThread{
 
 	protected function executeQuery($mysqli, int $mode, string $query, array $params) : SqlResult{
 		assert($mysqli instanceof mysqli);
+		/** @var MysqlCredentials $cred */
+		$cred = unserialize($this->credentials);
+		while(!$mysqli->ping()){
+			$cred->reconnectMysqli($mysqli);
+			if($this->connError === null){
+				break;
+			}
+		}
 		if(empty($params)){
 			$result = $mysqli->query($query);
 			if($result === false){

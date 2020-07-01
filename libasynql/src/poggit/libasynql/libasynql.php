@@ -31,7 +31,10 @@ use poggit\libasynql\base\SqlThreadPool;
 use poggit\libasynql\mysqli\MysqlCredentials;
 use poggit\libasynql\mysqli\MysqliThread;
 use poggit\libasynql\sqlite3\Sqlite3Thread;
+use function array_keys;
+use function count;
 use function extension_loaded;
+use function implode;
 use function is_array;
 use function is_string;
 use function strtolower;
@@ -51,7 +54,7 @@ final class libasynql{
 	public static function detectPackaged() : void{
 		self::$packaged = __CLASS__ !== 'poggit\libasynql\libasynql';
 
-		if(!self::$packaged){
+		if(!self::$packaged && defined("pocketmine\\VERSION")){
 			echo Terminal::$COLOR_YELLOW . "Warning: Use of unshaded libasynql detected. Debug mode is enabled. This may lead to major performance drop. Please use a shaded package in production. See https://poggit.pmmp.io/virion for more information.\n";
 		}
 	}
@@ -78,6 +81,10 @@ final class libasynql{
 		$type = (string) $configData["type"];
 		if($type === ""){
 			throw new ConfigException("Database type is missing");
+		}
+
+		if(count($sqlMap) === 0){
+			throw new InvalidArgumentCountException('Parameter $sqlMap cannot be empty');
 		}
 
 		$pdo = ($configData["prefer-pdo"] ?? false) && extension_loaded("pdo");
@@ -124,7 +131,7 @@ final class libasynql{
 		}
 
 		if(!isset($dialect, $factory, $sqlMap[$dialect])){
-			throw new ConfigException("Unsupported database type \"$type\". Try \"sqlite\" or \"mysql\".");
+			throw new ConfigException("Unsupported database type \"$type\". Try \"" . implode("\" or \"", array_keys($sqlMap)) . "\".");
 		}
 
 		$pool = new SqlThreadPool($factory, $configData["worker-limit"] ?? 1);
@@ -143,6 +150,7 @@ final class libasynql{
 			}
 			$connector->loadQueryFile($resource);
 		}
+
 		return $connector;
 	}
 
